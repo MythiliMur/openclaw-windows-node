@@ -648,16 +648,43 @@ foreach ($build in $releaseBuilds.GetEnumerator()) {
 }
 
 $buildMsixJob = Get-JobBlock "build-msix"
-Assert-Contains `
-    -Text $buildMsixJob `
-    -Expected "fetch-depth: 0" `
-    -Message "The paused MSIX build must retain full history before it can be re-enabled."
+foreach ($token in @(
+        "needs: [change-classification, metadata]",
+        "needs.metadata.result == 'success'",
+        "needs.change-classification.outputs.x64_release == 'true' || needs.change-classification.outputs.arm64_release == 'true'",
+        "architecture: [x64, arm64]",
+        "matrix.architecture == 'arm64' && 'windows-11-arm' || 'windows-latest'",
+        "fetch-depth: 0",
+        "global-json-file: global.json",
+        "OPENCLAW_BUILD_VERSION: `${{ needs.metadata.outputs.semVer }}",
+        "DEV_MSIX_REVISION: `${{ github.run_number }}",
+        '.\scripts\Build-StoreMsix.ps1 -Architecture',
+        '.\scripts\setup-dev-msix-cert.ps1',
+        '.\build.ps1 -Project WinUI -Configuration Release -Msix Dev',
+        '-MsixRevision $env:DEV_MSIX_REVISION',
+        '-MsixOutputDirectory "$env:RUNNER_TEMP\openclaw-dev-appx"',
+        '.\scripts\Export-DevMsixArtifact.ps1',
+        '-ExpectedVersion $env:OPENCLAW_BUILD_VERSION',
+        '-CertificateThumbprint $thumbprint',
+        'name: openclaw-msix-store-unsigned-${{ matrix.architecture }}',
+        'name: openclaw-msix-dev-${{ matrix.architecture }}',
+        'msix-metadata.json',
+        'OpenClaw-Dev.cer',
+        'INSTALL.txt',
+        'if-no-files-found: error',
+        '.\scripts\setup-dev-msix-cert.ps1 -Remove'
+    )) {
+    Assert-Contains -Text $buildMsixJob -Expected $token -Message "MSIX artifact lane is missing '$token'."
+}
+foreach ($token in @('if: false', "`n    continue-on-error: true", 'Set-Content global.json', 'msbuild src/', 'Select-Object -First 1', 'Export-PfxCertificate', 'secrets.', 'id-token: write')) {
+    Assert-NotContains -Text $buildMsixJob -Unexpected $token -Message "MSIX artifacts must not contain '$token'."
+}
 
 $ciGateJob = Get-JobBlock "ci-gate"
 foreach ($token in @(
         "name: CI Gate",
         "if: `${{ always() }}",
-        "needs: [change-classification, fast-validation, proof-pool-contracts, metadata, core-tests, tray-tests, ui-tests, setup-e2e, revocation-e2e, network-e2e, build-x64, build-arm64]",
+        "needs: [change-classification, fast-validation, proof-pool-contracts, metadata, core-tests, tray-tests, ui-tests, setup-e2e, revocation-e2e, network-e2e, build-x64, build-arm64, build-msix]",
         "./scripts/Assert-CiGateResults.ps1",
         "-FullRequired `$env:FULL_REQUIRED",
         "-CoreRequired `$env:CORE_REQUIRED",
@@ -668,7 +695,9 @@ foreach ($token in @(
         "-NetworkE2eRequired `$env:NETWORK_E2E_REQUIRED",
         "-X64ReleaseRequired `$env:X64_RELEASE_REQUIRED",
         "-Arm64ReleaseRequired `$env:ARM64_RELEASE_REQUIRED",
-        "-MetadataResult `$env:METADATA_RESULT"
+        "-MetadataResult `$env:METADATA_RESULT",
+        "MSIX_RESULT: `${{ needs.build-msix.result }}",
+        "-MsixResult `$env:MSIX_RESULT"
     )) {
     Assert-Contains -Text $ciGateJob -Expected $token -Message "Stable CI Gate is missing '$token'."
 }
@@ -683,6 +712,24 @@ foreach ($token in @(
     )) {
     Assert-Contains -Text $releaseJob -Expected $token -Message "Tag release is missing '$token'."
 }
+$alphaDownload = Get-StepBlock -Text $releaseJob -Name 'Download alpha Store MSIX artifacts'
+$alphaStage = Get-StepBlock -Text $releaseJob -Name 'Stage alpha Store MSIX release assets'
+foreach ($step in @($alphaDownload, $alphaStage)) {
+    Assert-Contains -Text $step -Expected "if: needs.metadata.outputs.isMsixAlpha == 'true'" -Message "Store release assets must be alpha-only."
+}
+Assert-Contains -Text $alphaDownload -Expected 'pattern: openclaw-msix-store-unsigned-*' -Message "Alpha releases must use unsigned Store inputs."
+Assert-NotContains -Text $alphaDownload -Unexpected 'openclaw-msix-dev-' -Message "Dev packages must stay workflow-only."
+Assert-Contains -Text $alphaStage -Expected '-ExpectedSourceCommit $env:GITHUB_SHA' -Message "Release staging must bind artifacts to the tag's source."
+Assert-Contains -Text $alphaStage -Expected '-Version $env:RELEASE_VERSION' -Message "Release staging must validate the alpha version."
+$createRelease = Get-StepBlock -Text $releaseJob -Name 'Create Release'
+Assert-Contains -Text $createRelease -Expected '${{ steps.msix_alpha.outputs.files }}' -Message "Only the gated alpha stage may add MSIX release files."
+Assert-Contains -Text $createRelease -Expected '${{ steps.msix_alpha.outputs.notes }}' -Message "Only alpha release notes may mention MSIX downloads."
+Assert-Contains -Text $createRelease -Expected 'fail_on_unmatched_files: true' -Message "Missing release files must fail publication."
+Assert-Contains -Text $createRelease -Expected "make_latest: `${{ needs.metadata.outputs.isPrerelease == 'true' && 'false' || 'true' }}" -Message "Alpha releases must not become Latest."
+Assert-NotContains -Text $createRelease -Unexpected 'OpenClawCompanion-x64.msix' -Message "MSIX must not be an unconditional stable release asset."
+Assert-NotContains -Text $createRelease -Unexpected 'OpenClawCompanion-arm64.msix' -Message "MSIX must not be an unconditional stable release asset."
+Assert-Contains -Text $workflow -Expected "./scripts/test-msix-ci-artifacts.ps1" -Message "Fast validation must exercise the Dev artifact contracts."
+Assert-Contains -Text $workflow -Expected "./scripts/test-msix-alpha-release.ps1" -Message "Fast validation must exercise alpha release staging."
 
 $triggerPaths = @(
     ".github/workflows/ci.yml",
