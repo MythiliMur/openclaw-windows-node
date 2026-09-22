@@ -59,7 +59,12 @@ internal sealed class NamedPipeGatewayToolsBrokerClient : IGatewayToolsBrokerCli
         (await SendAsync<GatewayToolSummary[]>("listTools", null, cancellationToken).ConfigureAwait(false)).Value ?? [];
 
     public Task<GatewayToolOperationResult> RegisterToolAsync(RegisterGatewayToolRequest request, CancellationToken cancellationToken = default) =>
-        OperationAsync("registerTool", request, cancellationToken);
+        OperationAsync("registerTool", new
+        {
+            request.Command,
+            source = request.Source == GatewayToolSource.Desktop ? "desktop" : "gatewayToolsFolder",
+            request.SelectedExecutablePath
+        }, cancellationToken);
     public Task<GatewayToolOperationResult> ScanGatewayToolsAsync(CancellationToken cancellationToken = default) =>
         OperationAsync("scanGatewayTools", null, cancellationToken);
     public Task<GatewayToolOperationResult> VerifyToolAsync(string registrationId, CancellationToken cancellationToken = default) =>
@@ -83,6 +88,7 @@ internal sealed class NamedPipeGatewayToolsBrokerClient : IGatewayToolsBrokerCli
     {
         try
         {
+            GatewayToolsBrokerActivation.EnsureStarted();
             using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
             await pipe.ConnectAsync(2_000, cancellationToken).ConfigureAwait(false);
             await using var writer = new StreamWriter(pipe, new UTF8Encoding(false), bufferSize: 1024, leaveOpen: true) { AutoFlush = true };
