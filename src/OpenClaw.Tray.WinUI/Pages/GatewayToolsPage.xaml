@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="OpenClawTray.Pages.GatewayToolsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Padding="24" Spacing="16" MaxWidth="900">
+            <StackPanel Spacing="4">
+                <TextBlock Text="Gateway Tools" Style="{StaticResource TitleTextBlockStyle}"/>
+                <TextBlock Text="Register tools for the isolated Gateway without changing your desktop PATH or sharing browser, credential, or profile data."
+                           TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            </StackPanel>
+            <InfoBar x:Name="ErrorInfoBar" IsOpen="False" Severity="Warning" IsClosable="True"/>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Add installed tool…" Click="OnAddDesktopToolClick"/>
+                <Button Content="Scan Gateway Tools folder" Click="OnScanGatewayToolsClick"/>
+                <Button Content="Refresh" Click="OnRefreshClick"/>
+            </StackPanel>
+            <TextBlock Text="For a desktop-installed tool, choose its executable. For a Gateway-owned tool, place it in the package-managed Gateway Tools folder and scan it. The packaging broker validates and registers every command."
+                       TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+            <ListView x:Name="ToolsList" ItemsSource="{Binding Tools}" SelectedValuePath="RegistrationId" SelectedValue="{Binding SelectedRegistrationId, Mode=TwoWay}" MinHeight="160">
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Padding="12" ColumnSpacing="16">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel Spacing="3">
+                                <TextBlock Text="{Binding Command}" Style="{StaticResource BodyStrongTextBlockStyle}"/>
+                                <TextBlock Text="{Binding Detail}" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}"/>
+                                <TextBlock Text="{Binding ExecutableStatus, StringFormat=Executable: {0}}"/>
+                                <TextBlock Text="{Binding RuntimeProfileStatus, StringFormat=Gateway runtime profile: {0}}"/>
+                                <TextBlock Text="{Binding AuthorizationStatus, StringFormat=Authorization: {0}}"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="{Binding Enabled, StringFormat=Enabled: {0}}" VerticalAlignment="Top"/>
+                        </Grid>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
+            <StackPanel Orientation="Horizontal" Spacing="8">
+                <Button Content="Verify in Gateway" Click="OnVerifyClick"/>
+                <Button Content="Create runtime profile" Click="OnCreateProfileClick"/>
+                <Button Content="Start interactive setup" Click="OnInteractiveSetupClick"/>
+                <Button Content="Enable" Click="OnEnableClick"/>
+                <Button Content="Disable" Click="OnDisableClick"/>
+                <Button Content="Remove" Click="OnRemoveClick"/>
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</Page>

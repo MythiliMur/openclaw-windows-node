@@ -79,6 +79,7 @@ public partial class App : Application, OpenClawTray.Services.IAppCommands, IPer
             [typeof(Pages.SettingsPage)] = typeof(SettingsPageViewModel),
             [typeof(Pages.PermissionsPage)] = typeof(PermissionsPageViewModel),
             [typeof(Pages.LocalAiPage)] = typeof(LocalAiPageViewModel),
+            [typeof(Pages.GatewayToolsPage)] = typeof(GatewayToolsPageViewModel),
         };
 
     /// <summary>The root service provider, or null before startup / after shutdown.</summary>

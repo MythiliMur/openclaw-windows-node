@@ -44,6 +44,8 @@ internal static class AppServiceRegistration
         services.AddSingleton<ISettingsStore, SettingsStore>();
         services.AddSingleton<IPermissionsPageRuntimeSource, PermissionsPageRuntimeSource>();
         services.AddSingleton<IHostHardwareProbe, CudaHostHardwareProbe>();
+        // The broker remains the authority for registration, shims, profiles, ACLs, and Gateway policy.
+        services.AddSingleton<IGatewayToolsBrokerClient, NamedPipeGatewayToolsBrokerClient>();
 
         // Container-owned navigation lifetime manager (disposed with the root provider).
         services.AddSingleton<NavigationScopeManager>();
@@ -54,6 +56,7 @@ internal static class AppServiceRegistration
 
         // Transient page view models resolved per navigation scope.
         services.AddTransient<SettingsPageViewModel>();
+        services.AddTransient<GatewayToolsPageViewModel>();
         services.AddTransient<PermissionsPageViewModel>();
         if (context.LocalAiRuntime is not null)
             services.AddTransient<LocalAiPageViewModel>();

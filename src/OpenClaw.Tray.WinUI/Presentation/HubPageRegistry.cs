@@ -25,6 +25,7 @@ internal enum HubPageKind
     Sessions,
     AgentEvents,
     Skills,
+    GatewayTools,
     Cron,
     Workspace
 }
@@ -165,6 +166,7 @@ internal static class HubPageRegistry
         "conversations" or "sessions" => HubPageKind.Sessions,
         "agentevents" => HubPageKind.AgentEvents,
         "skills" => HubPageKind.Skills,
+        "gateway-tools" => HubPageKind.GatewayTools,
         "cron" => HubPageKind.Cron,
         "workspace" => HubPageKind.Workspace,
         _ when tag?.StartsWith("agent:", StringComparison.Ordinal) == true => ResolveAgentPage(tag),
@@ -206,6 +208,7 @@ internal static class HubPageRegistry
             tag.Equals("chat", StringComparison.OrdinalIgnoreCase) ||
             tag.Equals("sessions", StringComparison.OrdinalIgnoreCase) ||
             tag.Equals("skills", StringComparison.OrdinalIgnoreCase) ||
+            tag.Equals("gateway-tools", StringComparison.OrdinalIgnoreCase) ||
             tag.Equals("channels", StringComparison.OrdinalIgnoreCase) ||
             tag.Equals("instances", StringComparison.OrdinalIgnoreCase) ||
             tag.Equals("agentevents", StringComparison.OrdinalIgnoreCase) ||
@@ -239,6 +242,7 @@ internal static class HubPageRegistry
         HubPageKind.Sessions => typeof(SessionsPage),
         HubPageKind.AgentEvents => typeof(AgentEventsPage),
         HubPageKind.Skills => typeof(SkillsPage),
+        HubPageKind.GatewayTools => typeof(GatewayToolsPage),
         HubPageKind.Cron => typeof(CronPage),
         HubPageKind.Workspace => typeof(WorkspacePage),
         _ => null
